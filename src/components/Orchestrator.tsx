@@ -5,11 +5,7 @@ import { Database, Play, Square, Loader2, CheckCircle2, AlertCircle } from 'luci
 import { controlContainer, checkContainerStatus } from '../actions/docker';
 
 const DATABASES = [
-  { id: 'mysql', name: 'MySQL', port: '3308' },
-  { id: 'mongodb', name: 'MongoDB', port: '27017' },
-  { id: 'sqlserver', name: 'SQL Server', port: '1433' },
-  { id: 'postgresql', name: 'PostgreSQL', port: '5433' },
-  { id: 'cassandra', name: 'Cassandra', port: '9042' },
+  { id: 'mysql', name: 'MySQL', port: '3306' },
 ];
 
 export default function Orchestrator() {
@@ -26,7 +22,7 @@ export default function Orchestrator() {
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000); 
+    setTimeout(() => setNotification(null), 4000); // Se oculta a los 4 segundos
   };
 
   const handleToggle = async (service: string, isRunning: boolean) => {
@@ -92,7 +88,7 @@ export default function Orchestrator() {
         })}
       </div>
 
-      
+      {/* Notificación Flotante */}
       {notification && (
         <div className={`fixed bottom-8 right-8 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300 z-50 ${
           notification.type === 'success'

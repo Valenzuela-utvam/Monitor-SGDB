@@ -1,20 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Cpu, Sparkles, Bot, TerminalSquare, Copy, Trash2, Database } from 'lucide-react';
+import { Send, Cpu, Sparkles, Bot, TerminalSquare, Copy, Trash2, Database, Download, Upload } from 'lucide-react';
 
 export default function Terminal() {
   const [formData, setFormData] = useState({
     engine: 'mysql',
     host: 'localhost',
-    port: '3308',
+    port: '3306',
     user: 'root',
-    password: 'root',
+    password: 'M@1uU$312-DB',
     database: '',
     query: ''
   });
 
-
+  // Estados separados para la Terminal y el Chat
   const [dbLogs, setDbLogs] = useState<{text: string, type: 'info' | 'success' | 'error' | 'warn' | 'ai', data?: any[]}[]>([
     { text: 'TERMINAL SGBD. A la espera de comandos...', type: 'info' }
   ]);
@@ -157,6 +157,90 @@ export default function Terminal() {
     setIsAsking(false);
   };
 
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  
+  const FTP_CONFIG = {
+    ftpHost: 'ftp.imagilex.com.mx',
+    ftpPort: '21',
+    ftpUser: 'backup_usr@utvam.imagilex.com.mx',
+    ftpPassword: 'Bp[8!8b$=B.LxW!e',
+  };
+
+  const uploadToFtp = async () => {
+    if (!formData.database) { addDbLog('Especifica la base de datos en el campo DB.', 'warn'); return; }
+    setIsUploading(true);
+    addDbLog(`> Generando backup de "${formData.database}" y subiendo a ${FTP_CONFIG.ftpHost}...`, 'info');
+    try {
+      const res = await fetch('/api/ftp-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mysqlHost: formData.host,
+          mysqlPort: formData.port,
+          mysqlUser: formData.user,
+          mysqlPassword: formData.password,
+          database: formData.database,
+          ...FTP_CONFIG,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        addDbLog(data.message, 'success');
+      } else {
+        addDbLog(`Error FTP: ${data.error}`, 'error');
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      addDbLog(`Fallo FTP: ${msg}`, 'error');
+    }
+    setIsUploading(false);
+  };
+
+  const downloadBackup = async () => {
+    if (formData.engine !== 'mysql') {
+      addDbLog('El backup automático solo está disponible para MySQL.', 'warn');
+      return;
+    }
+    if (!formData.database) {
+      addDbLog('Especifica el nombre de la base de datos en el campo DB antes de hacer backup.', 'warn');
+      return;
+    }
+    setIsBackingUp(true);
+    addDbLog(`> Generando backup de "${formData.database}"...`, 'info');
+
+    try {
+      const res = await fetch('/api/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        addDbLog(`Error al generar backup: ${err.error}`, 'error');
+        setIsBackingUp(false);
+        return;
+      }
+
+      // Descargar el archivo SQL
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_${formData.database}_${new Date().toISOString().slice(0,10)}.sql`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      addDbLog(`Backup de "${formData.database}" descargado exitosamente.`, 'success');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      addDbLog(`Fallo al generar backup: ${msg}`, 'error');
+    }
+    setIsBackingUp(false);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Formulario de Conexión Mejorado */}
@@ -168,10 +252,6 @@ export default function Terminal() {
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <select name="engine" value={formData.engine} onChange={handleInputChange} className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-300 focus:border-fuchsia-500 outline-none transition-colors">
             <option value="mysql">MySQL</option>
-            <option value="mongodb">MongoDB</option>
-            <option value="postgresql">PostgreSQL</option>
-            <option value="sqlserver">SQL Server</option>
-            <option value="cassandra">Cassandra</option>
           </select>
           <input name="host" placeholder="Host" value={formData.host} onChange={handleInputChange} className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-300 outline-none focus:border-fuchsia-500 transition-colors" />
           <input name="port" placeholder="Puerto" value={formData.port} onChange={handleInputChange} className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-300 outline-none focus:border-fuchsia-500 transition-colors" />
@@ -262,7 +342,7 @@ export default function Terminal() {
                     {log.text}
                   </div>
                 </div>
-
+                {/* Aquí renderizamos la tabla si hay datos */}
                 {log.data && (
                   <div className="overflow-x-auto mt-2 ml-14 border border-slate-700/50 rounded bg-[#0f111a]">
                     <table className="min-w-full text-left border-collapse">
@@ -302,14 +382,36 @@ export default function Terminal() {
               onChange={handleInputChange}
               className="w-full h-24 bg-[#0a0b0e] border border-slate-700 rounded-xl p-3 text-sm font-mono text-violet-300 outline-none focus:border-violet-500 resize-none transition-colors"
             />
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {formData.engine === 'mysql' && (
+                <button
+                  onClick={downloadBackup}
+                  disabled={isBackingUp}
+                  title="Descargar backup SQL de la BD conectada"
+                  className="bg-emerald-700/30 hover:bg-emerald-700/50 text-emerald-300 border border-emerald-600/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {isBackingUp ? <Cpu className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Backup SQL
+                </button>
+              )}
+              {formData.engine === 'mysql' && (
+                <button
+                  onClick={uploadToFtp}
+                  disabled={isUploading}
+                  title="Generar backup y subirlo al servidor FTP"
+                  className="bg-sky-700/30 hover:bg-sky-700/50 text-sky-300 border border-sky-600/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {isUploading ? <Cpu className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Subir a FTP
+                </button>
+              )}
               <button
                 onClick={executeCommand}
                 disabled={isExecuting}
                 className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50 shadow-md shadow-violet-900/20"
               >
                 {isExecuting ? <Cpu className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Ejecutar Comando 
+                Ejecutar Comando
               </button>
             </div>
           </div>

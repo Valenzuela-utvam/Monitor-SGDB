@@ -6,7 +6,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 // Usamos barras dobles (\\) para escapar la ruta en el string de Windows
-const COMPOSE_FILE = 'C:\\Users\\NiTo\\Documents\\Proyectos\\db\\db.yml';
+const COMPOSE_FILE = 'C:\\Users\\jon14\\OneDrive\\Desktop\\RUBEN_BD\\docker-compose.yml';
 
 export async function controlContainer(service: string, action: 'start' | 'stop') {
   try {

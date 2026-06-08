@@ -8,9 +8,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { engine, host, port, user, password, database, query } = body;
 
-    // ==========================================
-    // LÓGICA PARA MYSQL
-    // ==========================================
     if (engine === 'mysql') {
       let connection;
       try {
@@ -26,14 +23,13 @@ export async function POST(req: Request) {
         const [rows] = await connection.query(query);
         await connection.end();
 
-        // Formatear el resultado para ocultar la metadata gigante de MySQL
         let formattedData = rows;
         if (Array.isArray(rows)) {
-          // Si todos los elementos son de tipo ResultSetHeader (DDL/DML multi-consulta)
+
           if (rows.length > 0 && rows.every((r: any) => r && r.affectedRows !== undefined)) {
             formattedData = `${rows.length} instrucción(es) ejecutada(s) con éxito.`;
           } else {
-            // Si es un mix de resultados o tiene SELECTs entrelazados
+
             formattedData = rows.map((r: any) => {
               return (r && r.affectedRows !== undefined)
                 ? `Ejecución exitosa: ${r.affectedRows} fila(s) afectada(s).`
@@ -41,7 +37,7 @@ export async function POST(req: Request) {
             });
           }
         } else if (rows && (rows as any).affectedRows !== undefined) {
-          // DDL/DML de una sola consulta (Ej. solo un INSERT)
+          
           formattedData = `Ejecución exitosa: ${(rows as any).affectedRows} fila(s) afectada(s).`;
         }
 
