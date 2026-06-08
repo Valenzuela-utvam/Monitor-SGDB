@@ -26,7 +26,7 @@ export default function Orchestrator() {
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000); // Se oculta a los 4 segundos
+    setTimeout(() => setNotification(null), 4000); 
   };
 
   const handleToggle = async (service: string, isRunning: boolean) => {
@@ -92,7 +92,7 @@ export default function Orchestrator() {
         })}
       </div>
 
-      {/* Notificación Flotante */}
+      
       {notification && (
         <div className={`fixed bottom-8 right-8 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300 z-50 ${
           notification.type === 'success'

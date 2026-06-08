@@ -14,7 +14,7 @@ export default function Terminal() {
     query: ''
   });
 
-  // Estados separados para la Terminal y el Chat
+
   const [dbLogs, setDbLogs] = useState<{text: string, type: 'info' | 'success' | 'error' | 'warn' | 'ai', data?: any[]}[]>([
     { text: 'TERMINAL SGBD. A la espera de comandos...', type: 'info' }
   ]);
@@ -52,14 +52,14 @@ export default function Terminal() {
     chatLogsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatLogs]);
 
-  // Función para extraer código de la IA y pasarlo a la terminal
+
   const handleUseCommand = (text: string) => {
     const codeMatch = text.match(/```(?:[a-zA-Z]*\n)?([\s\S]*?)```/);
     const commandToUse = codeMatch ? codeMatch[1].trim() : text.trim();
     setFormData(prev => ({ ...prev, query: commandToUse }));
   };
 
-  // Función para manejar errores de HTML (el unexpected token '<')
+
   const handleResponse = async (res: Response) => {
     const text = await res.text();
     try {
@@ -69,16 +69,14 @@ export default function Terminal() {
     }
   };
 
-  // -----------------------------------------
-  // MODO 1: EJECUTAR COMANDO REAL
-  // -----------------------------------------
+
   const executeCommand = async () => {
     if (!formData.query) return;
     setIsExecuting(true);
     addDbLog(`> Ejecutando en ${formData.engine}...`, 'info');
 
     try {
-      // 1. Auditoría
+
       addDbLog('Analizando privilegios...', 'info');
       const auditRes = await fetch('/api/audit', {
         method: 'POST',
@@ -95,7 +93,7 @@ export default function Terminal() {
         return;
       }
 
-      // 2. Ejecución
+
       const execRes = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,9 +122,7 @@ export default function Terminal() {
     setIsExecuting(false);
   };
 
-  // -----------------------------------------
-  // MODO 2: PREGUNTAR A LA IA
-  // -----------------------------------------
+
   const askGemini = async () => {
     if (!aiPrompt.trim()) return;
     setIsAsking(true);
@@ -266,7 +262,7 @@ export default function Terminal() {
                     {log.text}
                   </div>
                 </div>
-                {/* Aquí renderizamos la tabla si hay datos */}
+
                 {log.data && (
                   <div className="overflow-x-auto mt-2 ml-14 border border-slate-700/50 rounded bg-[#0f111a]">
                     <table className="min-w-full text-left border-collapse">
@@ -313,7 +309,7 @@ export default function Terminal() {
                 className="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50 shadow-md shadow-violet-900/20"
               >
                 {isExecuting ? <Cpu className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Ejecutar Comando
+                Ejecutar Comando 
               </button>
             </div>
           </div>
