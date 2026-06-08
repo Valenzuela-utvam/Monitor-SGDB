@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Database, Play, Square, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { controlContainer, checkContainerStatus } from '../actions/docker';
+import { controlContainer, checkContainerStatus, getContainerStats } from '../actions/docker';
 
 const DATABASES = [
   { id: 'mysql', name: 'MySQL', port: '3306' },
@@ -11,6 +11,7 @@ const DATABASES = [
 export default function Orchestrator() {
   const [status, setStatus] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [stats, setStats] = useState<Record<string, { cpu: string, ram: string }>>({});
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -20,9 +21,39 @@ export default function Orchestrator() {
     });
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchStats = async () => {
+      const promises = DATABASES.map(async (db) => {
+        if (status[db.id]) {
+          const containerStats = await getContainerStats(db.id);
+          return { id: db.id, cpu: containerStats.success ? containerStats.cpu : '0.00%', ram: containerStats.success ? containerStats.ram : '0B' };
+        } else {
+          return { id: db.id, cpu: '0.00%', ram: '0B' };
+        }
+      });
+
+      const results = await Promise.all(promises);
+
+      if (mounted) {
+        const newStats: Record<string, { cpu: string, ram: string }> = {};
+        results.forEach(res => { newStats[res.id] = { cpu: res.cpu, ram: res.ram }; });
+        setStats(newStats);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [status]);
+
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000); // Se oculta a los 4 segundos
+    setTimeout(() => setNotification(null), 4000);
   };
 
   const handleToggle = async (service: string, isRunning: boolean) => {
@@ -61,7 +92,15 @@ export default function Orchestrator() {
                 <Database className={`w-5 h-5 ${isRunning ? 'text-coral-400' : 'text-slate-500'}`} />
                 <div>
                   <h3 className="text-sm font-bold text-slate-200">{db.name}</h3>
-                  <span className="text-xs text-slate-500 font-mono">Puerto: {db.port}</span>
+                  <div className="flex gap-3 text-xs font-mono mt-1">
+                    <span className="text-slate-500">Puerto: {db.port}</span>
+                    {isRunning && stats[db.id] && (
+                      <>
+                        <span className="text-cyan-400">CPU: {stats[db.id].cpu}</span>
+                        <span className="text-fuchsia-400">RAM: {stats[db.id].ram}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -88,7 +127,7 @@ export default function Orchestrator() {
         })}
       </div>
 
-      {/* Notificación Flotante */}
+
       {notification && (
         <div className={`fixed bottom-8 right-8 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300 z-50 ${
           notification.type === 'success'

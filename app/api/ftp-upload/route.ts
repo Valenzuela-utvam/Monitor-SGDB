@@ -39,12 +39,18 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { mysqlHost, mysqlPort, mysqlUser, mysqlPassword, database,
-            ftpHost, ftpPort, ftpUser, ftpPassword } = body;
+    const { mysqlHost, mysqlPort, mysqlUser, mysqlPassword, database } = body;
 
     if (!database) return NextResponse.json({ success: false, error: 'Especifica la base de datos.' }, { status: 400 });
 
-    
+    const ftpHost = process.env.FTP_HOST;
+    const ftpPort = process.env.FTP_PORT || '21';
+    const ftpUser = process.env.FTP_USER;
+    const ftpPassword = process.env.FTP_PASSWORD;
+
+    if (!ftpHost || !ftpUser || !ftpPassword) return NextResponse.json({ success: false, error: 'Credenciales FTP no configuradas en el servidor.' }, { status: 500 });
+
+
     const sql = await generateBackupSQL(mysqlHost, Number(mysqlPort), mysqlUser, mysqlPassword, database);
     const filename = `backup_${database}_${new Date().toISOString().slice(0, 10)}.sql`;
     const content = Buffer.from(sql, 'utf-8');
@@ -55,7 +61,7 @@ export async function POST(req: Request) {
       port: Number(ftpPort) || 21,
       user: ftpUser,
       password: ftpPassword,
-      secure: true,           
+      secure: true,
       secureOptions: { rejectUnauthorized: false },
     });
 

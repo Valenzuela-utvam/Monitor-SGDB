@@ -23,21 +23,22 @@ export async function POST(req: Request) {
         const [rows] = await connection.query(query);
         await connection.end();
 
-        let formattedData = rows;
+        // Formatear el resultado para ocultar la metadata gigante de MySQL
+        let formattedData: any = rows;
         if (Array.isArray(rows)) {
 
           if (rows.length > 0 && rows.every((r: any) => r && r.affectedRows !== undefined)) {
             formattedData = `${rows.length} instrucción(es) ejecutada(s) con éxito.`;
           } else {
 
-            formattedData = rows.map((r: any) => {
+            formattedData = (rows as any[]).map((r: any) => {
               return (r && r.affectedRows !== undefined)
                 ? `Ejecución exitosa: ${r.affectedRows} fila(s) afectada(s).`
                 : r;
             });
           }
         } else if (rows && (rows as any).affectedRows !== undefined) {
-          
+
           formattedData = `Ejecución exitosa: ${(rows as any).affectedRows} fila(s) afectada(s).`;
         }
 

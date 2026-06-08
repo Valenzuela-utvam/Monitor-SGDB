@@ -103,14 +103,39 @@ export default function Terminal() {
       const execData = await handleResponse(execRes);
 
       if (execData.success) {
-        if (typeof execData.data === 'string') {
-          addDbLog(`Éxito:\n${execData.data}`, 'success');
-        } else if (Array.isArray(execData.data) && execData.data.length > 0 && typeof execData.data[0] === 'object') {
-          addDbLog(`Éxito: ${execData.data.length} fila(s) devuelta(s).`, 'success', execData.data);
-        } else if (Array.isArray(execData.data) && execData.data.length === 0) {
-          addDbLog(`Éxito: 0 filas devueltas.`, 'success');
+        const data = execData.data;
+        if (typeof data === 'string') {
+          addDbLog(`Éxito: ${data}`, 'success');
+        } else if (Array.isArray(data)) {
+          if (data.length === 0) {
+            addDbLog(`Éxito: 0 filas devueltas.`, 'success');
+          } else if (data.every((r) => typeof r === 'object' && r !== null && !Array.isArray(r))) {
+            // Un solo SELECT
+            addDbLog(`Éxito: ${data.length} fila(s) devuelta(s).`, 'success', data);
+          } else {
+            // Múltiples sentencias o resultados mixtos
+            addDbLog(`Ejecución de múltiples sentencias completada:`, 'success');
+            data.forEach((resItem: any, i: number) => {
+              if (typeof resItem === 'string') {
+                addDbLog(`↳ Sentencia ${i + 1}: ${resItem}`, 'info');
+              } else if (Array.isArray(resItem)) {
+                if (resItem.length === 0) {
+                  addDbLog(`↳ Sentencia ${i + 1}: 0 filas devueltas.`, 'info');
+                } else if (typeof resItem[0] === 'object' && resItem[0] !== null) {
+                  addDbLog(`↳ Sentencia ${i + 1}: ${resItem.length} fila(s) devuelta(s).`, 'success', resItem);
+                } else {
+                  addDbLog(`↳ Sentencia ${i + 1}:\n${JSON.stringify(resItem, null, 2)}`, 'info');
+                }
+              } else if (typeof resItem === 'object' && resItem !== null) {
+                const rowsAffected = resItem.affectedRows !== undefined ? resItem.affectedRows : (resItem.nModified || 0);
+                addDbLog(`↳ Sentencia ${i + 1}: ${rowsAffected} fila(s) afectada(s).`, 'info');
+              }
+            });
+          }
+        } else if (typeof data === 'object' && data !== null && data.affectedRows !== undefined) {
+          addDbLog(`Éxito: ${data.affectedRows} fila(s) afectada(s).`, 'success');
         } else {
-          addDbLog(`Éxito:\n${JSON.stringify(execData.data, null, 2)}`, 'success');
+          addDbLog(`Éxito:\n${JSON.stringify(data, null, 2)}`, 'success');
         }
       } else {
         addDbLog(`Error del SGBD: ${execData.error}`, 'error');
@@ -160,18 +185,10 @@ export default function Terminal() {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  
-  const FTP_CONFIG = {
-    ftpHost: 'ftp.imagilex.com.mx',
-    ftpPort: '21',
-    ftpUser: 'backup_usr@utvam.imagilex.com.mx',
-    ftpPassword: 'Bp[8!8b$=B.LxW!e',
-  };
-
   const uploadToFtp = async () => {
     if (!formData.database) { addDbLog('Especifica la base de datos en el campo DB.', 'warn'); return; }
     setIsUploading(true);
-    addDbLog(`> Generando backup de "${formData.database}" y subiendo a ${FTP_CONFIG.ftpHost}...`, 'info');
+    addDbLog(`> Generando backup de "${formData.database}" y subiendo al servidor FTP...`, 'info');
     try {
       const res = await fetch('/api/ftp-upload', {
         method: 'POST',
@@ -182,7 +199,6 @@ export default function Terminal() {
           mysqlUser: formData.user,
           mysqlPassword: formData.password,
           database: formData.database,
-          ...FTP_CONFIG,
         }),
       });
       const data = await res.json();
@@ -342,7 +358,7 @@ export default function Terminal() {
                     {log.text}
                   </div>
                 </div>
-                {/* Aquí renderizamos la tabla si hay datos */}
+
                 {log.data && (
                   <div className="overflow-x-auto mt-2 ml-14 border border-slate-700/50 rounded bg-[#0f111a]">
                     <table className="min-w-full text-left border-collapse">

@@ -5,12 +5,12 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-// Usamos barras dobles (\\) para escapar la ruta en el string de Windows
-const COMPOSE_FILE = 'C:\\Users\\jon14\\OneDrive\\Desktop\\RUBEN_BD\\docker-compose.yml';
+
+const COMPOSE_FILE = 'C:/Users/NiTo/Documents/Proyectos/db/db.yml';
 
 export async function controlContainer(service: string, action: 'start' | 'stop') {
   try {
-    // En Windows, es más seguro envolver la ruta del archivo entre comillas dobles
+
     const command = action === 'start'
       ? `docker compose -f "${COMPOSE_FILE}" up -d ${service}`
       : `docker compose -f "${COMPOSE_FILE}" stop ${service}`;
@@ -31,6 +31,23 @@ export async function checkContainerStatus(service: string) {
     return stdout.trim() === 'true';
   } catch (error) {
     return false;
+  }
+}
+
+export async function getContainerStats(service: string) {
+  try {
+    const containerName = getContainerName(service);
+    // El flag --no-stream obtiene la lectura actual y termina el comando. Formato JSON para fácil parseo.
+    const { stdout } = await execAsync(`docker stats --no-stream --format "{{json .}}" ${containerName}`);
+    const stats = JSON.parse(stdout.trim());
+    return {
+      success: true,
+      cpu: stats.CPUPerc,
+      ram: stats.MemUsage,
+      ramPerc: stats.MemPerc
+    };
+  } catch (error) {
+    return { success: false, cpu: '0.00%', ram: '0B / 0B', ramPerc: '0.00%' };
   }
 }
 
